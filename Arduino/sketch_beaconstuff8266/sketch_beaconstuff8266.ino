@@ -7,6 +7,7 @@ extern "C" {
 uint8_t channel;
 uint8_t beaconMAC[6];
 String ssid_preface = "DGHonk-";
+String ssid_end = "---";
 String old_ssid = "Start";
 
 //Construct beacon frame
@@ -95,14 +96,11 @@ void loop() {
     Serial.print("SSID will be changed to:\t");
     Serial.println(ssid_preface+new_ssid);
     
-    send_beacon(ssid_preface+new_ssid);
+    send_beacon(ssid_preface+new_ssid+ssid_end);
     old_ssid=new_ssid;
     new_ssid="";
   }
   else{
     send_beacon(ssid_preface+old_ssid);
    }
-  
-      
-  delay(1);
 }

@@ -1,2 +1,6 @@
 .idea/
 out/
+.vscode/
+__pycache__/
+*.zip
+*.ini
