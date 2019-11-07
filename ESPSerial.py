@@ -95,7 +95,7 @@ class ESPConnect:
         """
         self.espconn.write(message.encode())
 
-    def read_from_esp(self, delay=.5):
+    def read_from_esp(self, delay=.5, entire=False):
         """Read from device data received from Serial.print
 
         param delay: seconds to wait before trying to read
@@ -104,6 +104,8 @@ class ESPConnect:
         sleep(delay)
         try:
             if self.espconn.inWaiting()>0:
+                if entire:
+                    return self.espconn.read(self.espconn.inWaiting()).decode().strip()
                 return(self.espconn.readline().decode().strip())
 
         except UnicodeDecodeError:
@@ -118,8 +120,13 @@ if __name__ == '__main__':
     parser.add_argument('-p', dest='port', action='store', help='Supply port (WIN only)', default=commPort)
     results = parser.parse_args()
     
+    results.SSID='1:'
     with ESPConnect(results.port) as serconn:
-        serconn.update_beacon_ssid(results.SSID)
+        if results.SSID.startswith('1:'):
+            serconn.update_beacon_ssid(results.SSID)
+            print(serconn.read_from_esp(.8, True))
+        else: 
+            serconn.update_beacon_ssid(results.SSID)
         # print(serconn.read_from_esp())
 
 
