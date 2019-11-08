@@ -8,23 +8,26 @@ from time import sleep
 class ESPConnect:
     def __init__(self, port, baudrate=115200):
         if sys.platform.startswith('linux'):
-            self.port = self.get_device() 
+            self.port = self.get_device()
+            print('[INFO] Linux operating system identified. Port to device: '+self.port)
         elif sys.platform.startswith('win'):
             self.port = port
+            print('[INFO] Windows operating system identified. Port to device: '+self.port)
         else:
             print('[ERROR] Operating system could not be identified')
-            quit()
+            self.port = None
 
         self.baudrate = baudrate
         self.espconn = self.estab_connect()
-        self.flush_serial_inout()
-
+        
         if not self.check_serial_open():
+            print('[INFO] Communication port to device could not be opened.')
             quit()
-        else:
-            # print(espconn.get_settings())
-            #espconn.setDTR(False)   # will cause reset on comm connection
-            self.espconn.setRTS(False)   # will cause esp reset on comm disconnection
+        
+        self.flush_serial_inout()
+        # print(espconn.get_settings())
+        #espconn.setDTR(False)   # will cause reset on comm connection
+        self.espconn.setRTS(False)   # will cause esp reset on comm disconnection
     
     def __enter__(self):
         return self
@@ -62,7 +65,7 @@ class ESPConnect:
             return serial.Serial(self.port, self.baudrate)
         except serial.serialutil.SerialException:
             print(f'[ERROR] SeriaException: could not open connection to ESP on "{self.port}"')
-            return None
+            quit()
 
     def close_connect(self):
         """Safely close serial connection with device
