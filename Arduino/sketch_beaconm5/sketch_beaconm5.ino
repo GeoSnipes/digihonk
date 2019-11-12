@@ -4,7 +4,7 @@
 
 extern const unsigned char gImage_logo[];
 long loopTime, startTime, wifiscantime, accscantime = 0;
-bool led = true;
+bool led = true; 
 uint8_t led_count = 12;
 int wificount = 0;
 
@@ -13,7 +13,7 @@ String ssid_preface = "DGHonk-";
 String MYID;
 
 bool report_acc = false;
-char buf[100];
+char buf[1000];
 float accX_f = 0;
 float accY_f = 0;
 float accZ_f = 0;
@@ -85,10 +85,10 @@ int scanWiFi(uint8_t scan_channel, bool returnlist=false) {
     Serial.print("Number of networks found: "); Serial.println(numberOfNetworks);
     for (int i = 0; i < numberOfNetworks; i++) {
       //num||Network name||Network channel||Network strength||MAC address
-      // Serial.print(i+1);
-      // Serial.println("||"+WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
-      snprintf(buf,sizeof(buf), "%d||%s||%d||%d||%s", i+1, WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
-      Serial.println(buf);
+       Serial.print(i+1);
+       Serial.println("||"+WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
+//      snprintf(buf,sizeof(buf), "%d||%s||%d||%d||%s", i+1, WiFi.SSID(i),WiFi.channel(i),WiFi.RSSI(i),WiFi.BSSIDstr(i));
+//      Serial.println(buf);
     }
   }
 
@@ -208,7 +208,6 @@ void m5Startup(){
 }
 
 void dghonkStartup(){
-    Serial.begin(115200);
     Serial.setTimeout(200);
     delay(100);
     
