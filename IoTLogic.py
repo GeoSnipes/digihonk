@@ -86,11 +86,11 @@ def run_mode4():
 
 def run_mode5():
     accgyro=[]
-    return()
+    return
     serconn.update_beacon_ssid('3:')
     upd = serconn.read_from_esp(.3)
     while upd != None:
-        accgyro.appen(upd)
+        accgyro.append(upd)
         upd = serconn.read_from_esp(.3)
 
 

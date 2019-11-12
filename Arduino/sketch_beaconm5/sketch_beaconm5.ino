@@ -2,7 +2,7 @@
 #include <WiFi.h>
 
 extern const unsigned char gImage_logo[];
-long loopTime, startTime, wifiscantime = 0;
+long loopTime, startTime, wifiscantime, accscantime = 0;
 bool led = true;
 uint8_t led_count = 12;
 int wificount = 0;
@@ -11,6 +11,7 @@ int broad_channel=11;
 String ssid_preface = "DGHonk-";
 String MYID;
 
+bool report_acc = false;
 float accX_f = 0;
 float accY_f = 0;
 float accZ_f = 0;
@@ -98,7 +99,7 @@ void dispWifiCount(bool newscan = false){
     M5.Lcd.println("WIFI Scanning");
     digitalWrite(M5_LED, LOW);
     wificount = scanWiFi(11);
-    digitalWrite(M5_LED, HIGH);
+//    digitalWrite(M5_LED, HIGH);
   }
 
   if (wificount == 0) {
@@ -114,6 +115,12 @@ void dispWifiCount(bool newscan = false){
   }
 }
 
+  void detailed_acc(long timer=100){
+    loopTime = millis();
+    if(timer < (loopTime - 500)){
+    /*****
+  }
+  
 void set_new_ssid(String rec_ssid){
   rec_ssid = ssid_preface+rec_ssid;
   const char *new_ssid=rec_ssid.c_str();
@@ -138,7 +145,12 @@ void run_input(){
       Serial.println(MYID);
     }
     else if (rec_ssid.startsWith("3:")){
-      Serial.println('TEst speed.');
+      if (rec_ssid.startsWith("3:0")){
+        Serial.println("3:0");
+      }
+      else if (rec_ssid.startsWith("3:1")){
+        Serial.println("3:1");
+      }
     }
     else {      
       set_new_ssid(rec_ssid);
@@ -249,4 +261,6 @@ void loop() {
   }
 
   run_input();
+  if report_acc:
+    detailed_acc();
 }

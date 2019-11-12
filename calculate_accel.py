@@ -5,7 +5,7 @@ chdir(r'D:\Users\Geovanni\Sync\UMKC\3rd 1st Semester\CS5590 Special Topics IoT\I
 
 #%%
 def create_data():
-    import writeESPSerial
+    import ESPSerial
     f = open('accdata','w')
     i=0
     runf=1000

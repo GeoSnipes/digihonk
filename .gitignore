@@ -4,3 +4,5 @@ out/
 __pycache__/
 *.zip
 *.ini
+build/
+GPS Data_1.4.7.apk/
