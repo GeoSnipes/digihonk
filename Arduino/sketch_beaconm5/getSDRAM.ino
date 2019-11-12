@@ -15,8 +15,3 @@ int freeMemory() {
   return __brkval ? &top - __brkval : &top - __malloc_heap_start;
 #endif  // __arm__
 }
-
-
-
-
-byngyn 

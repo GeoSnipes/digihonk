@@ -77,7 +77,7 @@ int scanWiFi(uint8_t scan_channel, bool returnlist=false) {
   bool passive = false;
   uint32_t max_ms_per_chan = 500;
 
-  int numberOfNetworks = WiFi.scanNetworks(async, show_hidden, passive, max_ms_per_chan, scan_channel);
+  int numberOfNetworks = WiFi.scanNetworksv2(async, show_hidden, passive, max_ms_per_chan, scan_channel);
  
   if (returnlist){
     Serial.print("Number of networks found: "); Serial.println(numberOfNetworks);
@@ -115,11 +115,11 @@ void dispWifiCount(bool newscan = false){
   }
 }
 
-  void detailed_acc(long timer=100){
-    loopTime = millis();
-    if(timer < (loopTime - 500)){
-    /*****
-  }
+void detailed_acc(long timer=100){
+  loopTime = millis();
+  if(timer < (loopTime - 500)){
+  }  
+}
   
 void set_new_ssid(String rec_ssid){
   rec_ssid = ssid_preface+rec_ssid;
@@ -261,6 +261,6 @@ void loop() {
   }
 
   run_input();
-  if report_acc:
+  if (report_acc)
     detailed_acc();
 }
