@@ -43,7 +43,7 @@ class ESPConnect:
         rtype: string
         """
 
-        for rool, dirs, files in walk(defL):
+        for _, _, files in walk(defL):
             for mnt_point in files:
                 if 'ttyUSB' in mnt_point:
                     picon = defL + mnt_point
