@@ -1,5 +1,6 @@
-#include <M5StickC.h>
 #include <WiFi.h>
+#include <M5StickC.h>
+
 
 extern const unsigned char gImage_logo[];
 long loopTime, startTime, wifiscantime, accscantime = 0;
@@ -12,6 +13,7 @@ String ssid_preface = "DGHonk-";
 String MYID;
 
 bool report_acc = false;
+char buf[100];
 float accX_f = 0;
 float accY_f = 0;
 float accZ_f = 0;
@@ -29,8 +31,8 @@ void wifiTest() {
     int n = WiFi.scanNetworks();
     M5.Lcd.setCursor(7, 20, 2);
     M5.Lcd.println("scan done");
-	
-	if (n == 0) {
+  
+  if (n == 0) {
       M5.Lcd.setTextColor(RED, WHITE);
     } else {   
       M5.Lcd.setTextColor(GREEN, WHITE);
@@ -83,8 +85,10 @@ int scanWiFi(uint8_t scan_channel, bool returnlist=false) {
     Serial.print("Number of networks found: "); Serial.println(numberOfNetworks);
     for (int i = 0; i < numberOfNetworks; i++) {
       //num||Network name||Network channel||Network strength||MAC address
-      Serial.print(i+1);
-      Serial.println("||"+WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
+      // Serial.print(i+1);
+      // Serial.println("||"+WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
+      snprintf(buf,sizeof(buf), "%d||%s||%d||%d||%s", i+1, WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
+      Serial.println(buf);
     }
   }
 
@@ -99,7 +103,6 @@ void dispWifiCount(bool newscan = false){
     M5.Lcd.println("WIFI Scanning");
     digitalWrite(M5_LED, LOW);
     wificount = scanWiFi(11);
-//    digitalWrite(M5_LED, HIGH);
   }
 
   if (wificount == 0) {
@@ -116,9 +119,15 @@ void dispWifiCount(bool newscan = false){
 }
 
 void detailed_acc(long timer=100){
-  loopTime = millis();
-  if(timer < (loopTime - 500)){
-  }  
+  // loopTime = millis();
+  // if(timer < (loopTime - 500)){
+  // }  
+  M5.MPU6886.getGyroData(&gyroX_f,&gyroY_f,&gyroZ_f);
+  M5.MPU6886.getAccelData(&accX_f,&accY_f,&accZ_f);
+
+  snprintf(buf,sizeof(buf), "%d %.2f %.2f %.2f %.2f %.2f %.2f", millis(), gyroX_f, gyroY_f, gyroZ_f, accX_f, accY_f, accZ_f);
+  Serial.println(buf);
+
 }
   
 void set_new_ssid(String rec_ssid){
@@ -146,10 +155,12 @@ void run_input(){
     }
     else if (rec_ssid.startsWith("3:")){
       if (rec_ssid.startsWith("3:0")){
-        Serial.println("3:0");
+        Serial.println("Accelorometer report off");
+        report_acc = false;
       }
       else if (rec_ssid.startsWith("3:1")){
-        Serial.println("3:1");
+        Serial.println("Accelorometer report on");
+        report_acc = true;
       }
     }
     else {      
