@@ -104,6 +104,8 @@ class ESPConnect:
         param delay: seconds to wait before trying to read
         rtype: str
         """
+        if entire:
+            delay = 4
         sleep(delay)
         try:
             if self.espconn.inWaiting()>0:
@@ -132,6 +134,7 @@ if __name__ == '__main__':
             serconn.update_beacon_ssid(results.SSID)
         # print(serconn.read_from_esp())
 
-
-
+# with ESPConnect('COM23') as serconn:
+#     serconn.update_beacon_ssid('1:00')
+#     print(serconn.read_from_esp(entire=True).split('\n'))
     
