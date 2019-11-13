@@ -1,6 +1,7 @@
 from random import randint
 import ESPSerial 
 from time import time
+import re
 
 serconn = ESPSerial.ESPConnect(ESPSerial.commPort)
 
@@ -21,19 +22,29 @@ def new_broadcast(timenow=stoptime, mode='',next_move='',misc='', flush=True):
     else:
         print(serconn.read_from_esp(.4))
 
-def get_dghonks(wait=1):
+def get_dghonks(wait=1, entire=False):
+    numnet = -1
+    honk_list = []
+
     serconn.update_beacon_ssid("1:")
-    return serconn.read_from_esp(wait)
+    ssids = serconn.read_from_esp(wait, entire).split('\n')
+    
+    numnet = int(re.findall(ssids[0].strip(), r'(\d{1,2})$'))
+    if numnet + 1 != len(ssids):
+        ssids.extend(serconn.read_from_esp(entire=True).split('\n'))
+    for ssid in ssids[1:]:
+        honk_list.append(ssid.strip())
+
+    return honk_list
 
 def get_MYID():
     serconn.update_beacon_ssid("2:")
     return serconn.read_from_esp()
 
 def create_inter_dict(inter_SSIDS, car_ids = {}):
-    entries = []
     errorhonk = []
     #Check and combine stats to ensure unique car ids
-    for wifissid in inter_SSIDS.strip().split('\n')[1:]:
+    for wifissid in inter_SSIDS:
         split_spec = wifissid.strip().split('||')
         if not split_spec[1].startswith('DGHonk-'):
             # print(wifissid)
@@ -66,6 +77,8 @@ def find_next_inline(dghonks):
     print(sorted_dghonks)
     print(nextmove)
     return min(nextmove)
+def monitor_move():
+    pass
 
 def run_mode2():
     new_broadcast(mode='2', flush=False)
@@ -83,6 +96,8 @@ def run_mode3(dghonks):
 
 def run_mode4():
     new_broadcast(mode='4', next_move=MYID, flush=False)
+    monitor_move()
+    new_broadcast(mode='6', flush=False)
 
 def run_mode5():
     accgyro=[]
@@ -103,18 +118,18 @@ def run_mode5():
 5-MonitoringNextToMove
 6-PassedIntersection
 '''
-honk_list = '1||DGHonk-1.1.1256489.1..---||11||-52||18:9C:27:34:42:60\n2||DGHonk-2.2.741688.3..---||11||-68||58:20:B1:88:78:A8\n'+\
-    '3||DGHonk-3.1.8648659.2..---||11||-84||D4:B9:2F:9B:D1:25\n4||DGHonk-3.3.84916864...---||11||-93||4E:7A:8A:96:D7:D2\n'+\
-    '4||Hennhouse||11||-89||10:93:97:78:EA:40\n5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2\n'
+honk_list = ['1||DGHonk-1.1.1256489.1..---||11||-52||18:9C:27:34:42:60','2||DGHonk-2.2.741688.3..---||11||-68||58:20:B1:88:78:A8',\
+    '3||DGHonk-3.1.8648659.2..---||11||-84||D4:B9:2F:9B:D1:25','4||DGHonk-3.3.84916864...---||11||-93||4E:7A:8A:96:D7:D2',\
+    '4||Hennhouse||11||-89||10:93:97:78:EA:40','5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2']
 
 if __name__ == '__main__':
     # MYID = get_MYID().strip()
-    # new_broadcast(mode='1', flush=False)
+    new_broadcast(mode='1', flush=False)
     while True:
         # honk_list = run_mode2()
-        print(MYID)
-        print(honk_list)
-        if len(honk_list) != 0:
+        # print(MYID)
+        # print(honk_list)
+        if len(honk_list) == 0:
             inter_list = create_inter_dict(honk_list)
             if len(inter_list) > 0:
                 nextID = run_mode3(inter_list)
