@@ -84,6 +84,9 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
         param car_ids: previous dictionary of ssids (default- dict())
         rtype: dictionary
     """
+    if len(inter_SSIDS) == 0:
+        return {}
+
     errorhonk = []
     #Check and combine stats to ensure unique car ids
     for wifissid in inter_SSIDS:
@@ -121,6 +124,7 @@ def mode4_immoving():
         rtype: None
     """
     new_broadcast(mode='4', next_move=MYID, flush=False)
+    '''Read from arduino button press to signify passed intersection'''
     sleep(5)
     new_broadcast(mode='6', flush=False)
 
@@ -165,6 +169,9 @@ def mode7_findallmoving(inter_list, v2):
     global MYID
     global my_direction
     global stoptime
+
+    new_broadcast(mode='7', flush=False)
+
     moving = []
     will_collide = []
     shouldwait = []
@@ -203,15 +210,14 @@ if __name__ == '__main__':
     # MYID = get_MYID().strip()
     new_broadcast(mode='1', flush=False)
     while True:
-        # honk_list = run_mode2()
-        if len(honk_list) != 0:
-            inter_list = create_inter_dict(honk_list)
-            if len(inter_list) > 0:
-                mov, col = mode7_findallmoving(inter_list, True)
-                if str(MYID) in  mov:
-                    break
-                else:
-                    mode5_monitornexttomove(col)
+        honk_list = mode2_scanssid()
+        inter_list = create_inter_dict(honk_list)
+        if len(inter_list) > 0:
+            mov, col = mode7_findallmoving(inter_list, True)
+            if str(MYID) in  mov:
+                break
+            else:
+                mode5_monitornexttomove(col)
 
     mode4_immoving()
 
