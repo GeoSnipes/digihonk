@@ -3,8 +3,6 @@ import ESPSerial
 from time import time, sleep
 import re
 
-serconn = ESPSerial.ESPConnect(ESPSerial.commPort)
-
 MYID = randint(1,100)
 stoptime = time()
 counter = 0
@@ -25,17 +23,27 @@ collision = {
     '12': ['4', '8']
     }
 
-def new_broadcast(timenow=stoptime, mode='',next_move='',misc='', flush=False):
-    """ Construct broadcast ssid the  arduino is to use
-            
-        param defL: linux, folder where mount points are found (default- /dev/)
-        rtype: string
+def new_broadcast(mode, timenow=stoptime, misc='', flush=False):
+    """Construct broadcast ssid the  arduino is to use
+
+    Parameters
+    ----------
+    timenow : int, optional
+        time for broadcast (default is current time)
+    mode : str
+        from mode types, mode to broadcast
+    misc : str, opional
+        for future code (default is empty)
+    flush : bool, optional
+        if not needed, you can flush the input output buffer of m5stick
     """
+
     global MYID
     global counter
+    global my_direction 
     counter += 1
     
-    new_ssid = '.'.join([str(MYID), str(counter), str(int(timenow)),str(mode),str(next_move),str(misc)])
+    new_ssid = '.'.join([str(MYID), str(counter), str(int(timenow)),str(mode),str(my_direction),str(misc)])
 
     serconn.update_beacon_ssid(new_ssid)
     if flush:
@@ -45,11 +53,19 @@ def new_broadcast(timenow=stoptime, mode='',next_move='',misc='', flush=False):
 
 
 def get_dghonks(wait=1, entire=True):
-    """ Retrieve list of DGHonk signals
-            
-        :param wait: time to wait before getting input from arduino (default- 1 sec)
-        :param entire: get entire list instead of single line
-        rtype: list
+    """Retrieve list of all wifi signals
+
+    Parameters
+    ----------
+    wait : int, optional
+        time to wait before trying to read ssid results from m5stick (default is 1 second)
+    entire : bool, optional
+        retrieve entire list of results instead of one line of result (default is True)
+    
+    Returns
+    -------
+    list
+        a list of each ssid found
     """
     numnet = -1
     honk_list = []
@@ -66,42 +82,58 @@ def get_dghonks(wait=1, entire=True):
     return honk_list
 
 def get_MYID():
-    """ Retrieve MAC address of arduino
-            
-        rtype: string
+    """Retrieve MAC address of arduino
+
+    Returns
+    -------
+    str
+        mac address
     """
     serconn.update_beacon_ssid("2:")
     return serconn.read_from_esp()
 
 def create_inter_dict(inter_SSIDS, car_ids = {}):
-    """ Convert list of ssid signals to dictionary with key id and value stats 
+    """Convert list of ssid signals to a dictionary with key id and value stats 
 
-        EG-
-        input: inter_SSIDS = ['1||DGHonk-1.1.1256489.1.2.---||11||-52||18:9C:27:34:42:60','4||Hennhouse||11||-89||10:93:97:78:EA:40']
+    Parameters
+    ----------
+    inter_SSIDS : list
+        list of wifi ssids found
+    car_ids : dict, optional
+        pre populated dictionary of car stats by unique id (default is empty dicitonary)
+    
+    Return
+    ------
+    dict
+        car stats by id
+
+    E.G.
+    input: inter_SSIDS = ['1||DGHonk-1.1.1256489.1.2.---||11||-52||18:9C:27:34:42:60','4||Hennhouse||11||-89||10:93:97:78:EA:40']
                             id:  counter    time stopped   mode   direction  signal stregth  mac address
-        output: car_ids = {'1':[    '1',    '1256489',      '1',      '2'       '-52',         '18:9C:27:34:42:60']}
-                           
-        param inter_SSIDS: list of ssids
-        param car_ids: previous dictionary of ssids (default- dict())
-        rtype: dictionary
+    output: car_ids = {'1':[    '1',    '1256489',      '1',      '2'       '-52',         '18:9C:27:34:42:60']}
     """
+
+    errorhonk = []
+
     if len(inter_SSIDS) == 0:
         return {}
 
-    errorhonk = []
     #Check and combine stats to ensure unique car ids
     for wifissid in inter_SSIDS:
         split_spec = wifissid.strip().split('||')
+
+        # Ignore ssids that do not follow DGHonk protocol
         if not split_spec[1].startswith('DGHonk-'):
-            # print(wifissid)
             continue
         ssid = split_spec[1]
         dghonk_stat = ssid.lstrip('DGHonk-').rstrip('---').split('.')
-        # car_stat = [int(i) for i in car_stat]
+        
+        # Record ssid not formatted correctly
         if len(dghonk_stat) != 6:
             errorhonk.append(wifissid)
             continue
-        # if dghonk_stat[3]
+
+        # Create dictionary
         if dghonk_stat[0] in car_ids:
             if int(dghonk_stat[1]) > int(car_ids[dghonk_stat[0]][0]):
                 car_ids[dghonk_stat[0]] = tuple(dghonk_stat[1:5]+split_spec[3:5])
@@ -113,29 +145,35 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
     return car_ids
 
 def mode2_scanssid():
-    """ Find all ssids in area
-            
-        rtype: list
+    """Find all ssids' in the area
+
+    Returns
+    -------
+    list
+        all ssids
     """
     new_broadcast(mode='2')
     return get_dghonks()
 
 def mode4_immoving():
-    """ Broadcast that I'm moving
-            
-        rtype: None
+    """Update ssids with status of moving porgress
     """
-    new_broadcast(mode='4', next_move=MYID)
+
+    new_broadcast(mode='4')
     '''Read from arduino button press to signify passed intersection'''
     sleep(5)
     new_broadcast(mode='6')
 
 
 def mode5_monitornexttomove(go_after):
-    """ Monitor next inline until out of intersection
-            
-        rtype: None
+    """Construct broadcast ssid the  arduino is to use
+
+    Parameters
+    ----------
+    go_after: list
+        list of cars to monitor until they are out of intersection
     """
+    
     new_broadcast(mode='5')
     for mon in go_after:
         signal_strength = []
@@ -150,7 +188,20 @@ def mode5_monitornexttomove(go_after):
                     break
 
 
-def mode7_findallmoving(inter_list, v2):
+def mode7_findallmoving(inter_list):
+    """Construct iterator of cars that can move and those that cannot
+
+    Parameters
+    ----------
+    inte_list : dict
+        dghonk ssids
+    
+    Return
+    ------
+    list, list
+        cars allowed to move, cars not allowed due to collision risk
+    """
+
     global MYID
     global my_direction
     global stoptime
@@ -161,20 +212,28 @@ def mode7_findallmoving(inter_list, v2):
     moving = []
     will_collide = set()
     shouldwait = []
+
+    # Add myself to turn intention list
     turn_intents= {str(my_direction): (str(MYID), stoptime)}
+    
+    # Add remaining cars to turn intention
     for car in inter_list:
         if inter_list[car][2] == '6':
             continue
         intent = inter_list[car][3]
         turn_intents[intent] = (car, int(inter_list[car][1]))
 
+
     sorted_intents = sorted(turn_intents.items(), key=lambda x: int(x[1][1]))
+    
+    # Add each car to allowed to move and create a set of directions that will collide
     for intent, id_time in sorted_intents:
         all_cars.add(id_time[0])
         if (intent not in will_collide):
             moving.append(id_time[0])
             will_collide.update(collision[intent])
-        
+    
+    # Collect all car is not able to turn
     shouldwait = all_cars.difference(set(moving))
     return moving, shouldwait
 
@@ -193,18 +252,16 @@ honk_list = ['1||DGHonk-1.1.1575354939.1.3.---||11||-52||18:9C:27:34:42:60','2||
 
 if __name__ == '__main__':
     # MYID = get_MYID().strip()
-    new_broadcast(mode='1')
-    while True:
-        # honk_list = mode2_scanssid()
-        inter_list = create_inter_dict(honk_list)
-        if len(inter_list) > 0:
-            mov, col = mode7_findallmoving(inter_list, True)
-            if str(MYID) in  mov:
-                break
-            else:
-                mode5_monitornexttomove(mov)
+    with ESPSerial.ESPConnect(ESPSerial.commPort) as serconn:
+        new_broadcast(mode='1')
+        while True:
+            # honk_list = mode2_scanssid()
+            inter_list = create_inter_dict(honk_list)
+            if len(inter_list) > 0:
+                mov, col = mode7_findallmoving(inter_list)
+                if str(MYID) in  mov:
+                    break
+                else:
+                    mode5_monitornexttomove(mov)
 
-    mode4_immoving()
-
-
-serconn.close_connect()
+        mode4_immoving()
