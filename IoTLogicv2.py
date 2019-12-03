@@ -25,7 +25,7 @@ collision = {
     '12': ['4', '8']
     }
 
-def new_broadcast(timenow=stoptime, mode='',next_move='',misc='', flush=True):
+def new_broadcast(timenow=stoptime, mode='',next_move='',misc='', flush=False):
     """ Construct broadcast ssid the  arduino is to use
             
         param defL: linux, folder where mount points are found (default- /dev/)
@@ -43,11 +43,12 @@ def new_broadcast(timenow=stoptime, mode='',next_move='',misc='', flush=True):
     else:
         print(serconn.read_from_esp(.4))
 
+
 def get_dghonks(wait=1, entire=True):
     """ Retrieve list of DGHonk signals
             
-        param wait: time to wait before getting input from arduino (default- 1 sec)
-        param entire: get entire list instead of single line
+        :param wait: time to wait before getting input from arduino (default- 1 sec)
+        :param entire: get entire list instead of single line
         rtype: list
     """
     numnet = -1
@@ -56,8 +57,8 @@ def get_dghonks(wait=1, entire=True):
     serconn.update_beacon_ssid("1:")
     ssids = serconn.read_from_esp(wait, entire).split('\n')
     
-    numnet = int(re.findall(ssids[0].strip(), r'(\d{1,2})$'))
-    while numnet + 1 != len(ssids):
+    numnet = int(re.search(r'\d{1,2}', ssids[0].strip()).group())
+    while numnet + 1 < len(ssids):
         ssids.extend(serconn.read_from_esp(entire=False).split('\n'))
     for ssid in ssids[1:]:
         honk_list.append(ssid.strip())
@@ -100,6 +101,7 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
         if len(dghonk_stat) != 6:
             errorhonk.append(wifissid)
             continue
+        # if dghonk_stat[3]
         if dghonk_stat[0] in car_ids:
             if int(dghonk_stat[1]) > int(car_ids[dghonk_stat[0]][0]):
                 car_ids[dghonk_stat[0]] = tuple(dghonk_stat[1:5]+split_spec[3:5])
@@ -115,7 +117,7 @@ def mode2_scanssid():
             
         rtype: list
     """
-    new_broadcast(mode='2', flush=False)
+    new_broadcast(mode='2')
     return get_dghonks()
 
 def mode4_immoving():
@@ -123,10 +125,10 @@ def mode4_immoving():
             
         rtype: None
     """
-    new_broadcast(mode='4', next_move=MYID, flush=False)
+    new_broadcast(mode='4', next_move=MYID)
     '''Read from arduino button press to signify passed intersection'''
     sleep(5)
-    new_broadcast(mode='6', flush=False)
+    new_broadcast(mode='6')
 
 
 def mode5_monitornexttomove(go_after):
@@ -134,63 +136,46 @@ def mode5_monitornexttomove(go_after):
             
         rtype: None
     """
+    new_broadcast(mode='5')
     for mon in go_after:
         signal_strength = []
         for _ in range(2):
             while True:
-                honks = create_inter_dict(get_dghonks())
+                honks = create_inter_dict(get_dghonks(), {})
                 if mon in honks:
                     signal_strength.append(int(honks[mon][4]))
+                    if honks[mon][2] == '6':
+                        break
                 else:
-                    sleep(.5)
                     break
 
-def mode7_findallmoving(inter_list):
-    global MYID
-    global my_direction
-    global stoptime
-    moving = []
-    will_collide = []
-    turn_intents= {str(my_direction): (str(MYID), stoptime)}
-    for car in inter_list:
-        intent = inter_list[car][3]
-        turn_intents[intent] = car
-
-    for intent in turn_intents.keys():
-        collision_count = len(set(collision[intent]).intersection(set(turn_intents.keys())))
-        if collision_count > 0:
-            will_collide.append(turn_intents[intent])
-        else:
-            moving.append(turn_intents[intent]) 
-    
-    return moving, will_collide
 
 def mode7_findallmoving(inter_list, v2):
     global MYID
     global my_direction
     global stoptime
 
-    new_broadcast(mode='7', flush=False)
+    new_broadcast(mode='7')
 
+    all_cars = set()
     moving = []
-    will_collide = []
+    will_collide = set()
     shouldwait = []
     turn_intents= {str(my_direction): (str(MYID), stoptime)}
     for car in inter_list:
+        if inter_list[car][2] == '6':
+            continue
         intent = inter_list[car][3]
         turn_intents[intent] = (car, int(inter_list[car][1]))
 
     sorted_intents = sorted(turn_intents.items(), key=lambda x: int(x[1][1]))
-    moving.append(sorted_intents[0][1][0])
-    intent = sorted_intents[0][0]
-    will_collide.extend(collision[intent])
-
     for intent, id_time in sorted_intents:
-        if (intent not in will_collide) and (intent != sorted_intents[0][0]):
+        all_cars.add(id_time[0])
+        if (intent not in will_collide):
             moving.append(id_time[0])
-            will_collide.extend(collision[intent])
+            will_collide.update(collision[intent])
         
-    shouldwait = set(inter_list.keys()).difference(set(moving))
+    shouldwait = all_cars.difference(set(moving))
     return moving, shouldwait
 
 '''CAR_ID.COUNTER.TIME_STOPPED.MODE.DIRECTION.MISC'''
@@ -202,22 +187,22 @@ def mode7_findallmoving(inter_list, v2):
 6-PassedIntersection
 7-Findmoving
 '''
-honk_list = ['1||DGHonk-1.1.1256489.1..---||11||-52||18:9C:27:34:42:60','2||DGHonk-2.2.741688.3..---||11||-68||58:20:B1:88:78:A8',\
-    '3||DGHonk-3.1.8648659.2..---||11||-84||D4:B9:2F:9B:D1:25','4||DGHonk-4.3.84916864...---||11||-93||4E:7A:8A:96:D7:D2',\
+honk_list = ['1||DGHonk-1.1.1575354939.1.3.---||11||-52||18:9C:27:34:42:60','2||DGHonk-2.2.1575355939.3.6.---||11||-68||58:20:B1:88:78:A8',\
+    '3||DGHonk-3.1.1572355969.2.12.---||11||-84||D4:B9:2F:9B:D1:25','4||DGHonk-4.3.1575355839.2.7.---||11||-93||4E:7A:8A:96:D7:D2',\
     '4||Hennhouse||11||-89||10:93:97:78:EA:40','5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2']
 
 if __name__ == '__main__':
     # MYID = get_MYID().strip()
-    new_broadcast(mode='1', flush=False)
+    new_broadcast(mode='1')
     while True:
-        honk_list = mode2_scanssid()
+        # honk_list = mode2_scanssid()
         inter_list = create_inter_dict(honk_list)
         if len(inter_list) > 0:
             mov, col = mode7_findallmoving(inter_list, True)
             if str(MYID) in  mov:
                 break
             else:
-                mode5_monitornexttomove(col)
+                mode5_monitornexttomove(mov)
 
     mode4_immoving()
 
