@@ -219,7 +219,7 @@ void loop() {
     wifiscantime = loopTime;
   }
 
-  /*
+  /* TODO (below psuedo code)
   id dghonk mode == false:
     if(digitalRead(M5_BUTTON_HOME) == LOW
       serial.println(dghonk start)
