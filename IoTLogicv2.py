@@ -2,9 +2,10 @@ from random import randint
 import ESPSerial 
 from time import time, sleep
 import re
+from argparse import ArgumentParser
 
 MYID = randint(1,100)
-stoptime = time()
+stoptime = 9999999999
 counter = 0
 my_direction = 8
 
@@ -23,7 +24,7 @@ collision = {
     '12': ['4', '8']
     }
 
-def new_broadcast(mode, timenow=stoptime, misc='', flush=False):
+def new_broadcast(mode, misc='', flush=False):
     """Construct broadcast ssid the  arduino is to use
 
     Parameters
@@ -41,16 +42,18 @@ def new_broadcast(mode, timenow=stoptime, misc='', flush=False):
     global MYID
     global counter
     global my_direction 
+    global stoptime
     counter += 1
     if mode != '0':
-        new_ssid = '.'.join([str(MYID), str(counter), str(int(timenow)),str(mode),str(my_direction),str(misc)])
+        new_ssid = '.'.join([str(MYID), str(counter), str(int(stoptime)),str(mode),str(my_direction),str(misc)])
     else:
         new_ssid = '---'
     serconn.update_beacon_ssid(new_ssid)
     if flush:
         serconn.flush_serial_inout()
     else:
-        print(serconn.read_from_esp(.4))
+        print(new_ssid, end='\t\t\t')
+        print(serconn.read_from_esp(.8))
 
 
 def get_dghonks(wait=1, entire=True):
@@ -142,8 +145,8 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
         else:
             car_ids[dghonk_stat[0]] = tuple(dghonk_stat[1:5]+split_spec[3:5])
     
-    if len(errorhonk) > 0:
-        print(f"Error DGHonk SSID's:\n{errorhonk}")
+    # if len(errorhonk) > 0:
+    #     print(f"Error DGHonk SSID's:\n{errorhonk}")
     return car_ids
 
 def mode2_scanssid():
@@ -164,11 +167,13 @@ def mode4_immoving():
     serconn.update_beacon_ssid('dgh:2')
     new_broadcast(mode='4')
     '''Read from arduino button press to signify passed intersection'''
+    print(f'[INFO] Waiting on notfication passed intersection.')
     while True: 
         stop_dgh = serconn.read_from_esp()
-        if start_dgh == 'dgh:0':
+        if stop_dgh == 'dgh:0':
             break
     new_broadcast(mode='6')
+
 
 
 def mode5_monitornexttomove(go_after):
@@ -180,6 +185,18 @@ def mode5_monitornexttomove(go_after):
         list of cars to monitor until they are out of intersection
     """
     
+    # new_broadcast(mode='5')
+    # for mon in go_after:
+    #     signal_strength = []
+    #     for _ in range(2):
+    #         while True:
+    #             honks = create_inter_dict(get_dghonks(), {})
+    #             if mon in honks:
+    #                 signal_strength.append(int(honks[mon][4]))
+    #                 if honks[mon][2] == '6':
+    #                     break
+    #             else:
+    #                 break
     new_broadcast(mode='5')
     for mon in go_after:
         signal_strength = []
@@ -259,26 +276,49 @@ honk_list = [\
     '4||DGHonk-4.3.1575355839.2.7.||11||-93||4E:7A:8A:96:D7:D2',\
     '4||Hennhouse||11||-89||10:93:97:78:EA:40',\
     '5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2']
-honk_list = []
+
 if __name__ == '__main__':
+    ESPSerial.commPort = 'COM23'
+
+    parser = ArgumentParser()
+    parser.add_argument('-p', dest='port', action='store', help='Supply port (WIN only)', default=ESPSerial.commPort)
+    parser.add_argument('-d', dest='dir', action='store', help='Supply direction intent', default=8)
+    results = parser.parse_args()
+
+    my_direction = int(results.dir)
     # MYID = get_MYID().strip()
-    with ESPSerial.ESPConnect(ESPSerial.commPort) as serconn:
+    with ESPSerial.ESPConnect(results.port) as serconn:
         serconn.update_beacon_ssid('dgh:0')
         while True:
-            print(f'[INFO] DGH startup. MYID: {MYID}')
-            new_broadcast(mode='0', flush=True)
+            print(f'[INFO] DGH startup. MYID: {MYID}\t\tDirection:{my_direction}')
+            sleep(1)
+            new_broadcast(mode='0')
+            print(f'[INFO] Waiting on notification at intersection.')
             while True: 
                 start_dgh = serconn.read_from_esp()
                 if start_dgh == 'dgh:1':
                     break
+            stoptime = time()
             while True:
-                # honk_list = mode2_scanssid()
+                print(f'[INFO] Scanning for DGHonks.')
+                honk_list = mode2_scanssid()
+                print(f'[INFO] Finding collisions.')
                 inter_list = create_inter_dict(honk_list)
                 if len(inter_list) > 0:
+                    print(f'[INFO] Found {len(inter_list)} DGH devices.')
                     mov, col = mode7_findallmoving(inter_list)
+                    print(f'[INFO] Allowed to move: {mov}\nMust wait: {col}')
                     if str(MYID) in  mov:
                         break
                     else:
+                        print(f'[INFO] Collision found. Waiting on {mov}')
                         mode5_monitornexttomove(mov)
-            print(f'[INFO] {MYID}: Can go.')
+                break
+            # sleep(1)
+            print(f'[INFO] Permission to go received. {MYID} will go.')
             mode4_immoving()
+            print(f'[INFO] Passed intersection notification received.')
+            sleep(4)
+            new_broadcast(mode='0')
+            break
+        

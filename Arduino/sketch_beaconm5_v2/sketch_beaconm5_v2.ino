@@ -10,7 +10,7 @@ int wificount = 0;
 
 int broad_channel=11;
 String ssid_preface = "DGHonk-";
-String MYID;
+String dgh_last_command = "";
 bool dghonk_mode = false;
 bool dgh_go = false;
 
@@ -38,26 +38,13 @@ void wifiTest() {
 }
 
 
-void imuTest(){
-  M5.IMU.getGyroData(&gyroX_f,&gyroY_f,&gyroZ_f);
-  M5.IMU.getAccelData(&accX_f,&accY_f,&accZ_f);
-  
-  M5.Lcd.setTextColor(GREEN, WHITE);
-  M5.Lcd.setCursor(20, 1, 1);
-  M5.Lcd.println("mg  o/s");
-  M5.Lcd.setCursor(0, 10);
-  M5.Lcd.printf("x  %.1f  %.1f", gyroX_f, accX_f);
-  M5.Lcd.setCursor(0, 20);
-  M5.Lcd.printf("y  %.1f  %.1f", gyroY_f, accY_f);
-  M5.Lcd.setCursor(0, 30);
-  M5.Lcd.printf("z  %.1f  %.1f", gyroZ_f, accZ_f);
-}
-
 // For now, information to rename ssid comes from serial
 String get_serial_input(){
   String new_string="";
   if (Serial.available()) {
-    new_string = Serial.readString();
+    // new_string = Serial.readString());
+    new_string = Serial.readStringUntil('\r\n');
+    dgh_last_command = new_string;
   }
   return new_string;
 }
@@ -68,7 +55,7 @@ int scanWiFi(uint8_t scan_channel, bool returnlist=false) {
   bool passive = false;
   uint32_t max_ms_per_chan = 400;
 
-  int numberOfNetworks = WiFi.scanNetworks(async, show_hidden, passive, max_ms_per_chan, scan_channel);
+  int numberOfNetworks = WiFi.scanNetworksv2(async, show_hidden, passive, max_ms_per_chan, scan_channel);
  
   if (returnlist){
     Serial.print("Number of networks found: "); Serial.println(numberOfNetworks);
@@ -91,7 +78,8 @@ void dispWifiCount(bool newscan = false){
     M5.Lcd.setCursor(0, 50, 1);
     M5.Lcd.println("WIFI Scanning");
     digitalWrite(M5_LED, LOW);
-    wificount = scanWiFi(0);
+    wificount = scanWiFi(11);
+    digitalWrite(M5_LED, HIGH);
   }
 
   if (wificount == 0) {
@@ -99,7 +87,7 @@ void dispWifiCount(bool newscan = false){
     M5.Lcd.setCursor(0, 70, 2);
     M5.Lcd.printf("%d AP", wificount);
   } else {   
-    M5.Lcd.setTextColor(BLACK, WHITE);
+    M5.Lcd.setTextColor(BLACK);
     M5.Lcd.setCursor(0, 60, 1);
     for (int i = 0; i < wificount; i++) {
       M5.Lcd.printf("%s||%d||%d\n", WiFi.SSID(i), WiFi.channel(i), WiFi.RSSI(i));
@@ -128,7 +116,7 @@ void run_input(){
       else{scanWiFi(11, true);}
     }
     else if (rec_ssid.startsWith("2:")){
-      Serial.println(MYID);
+      Serial.println(WiFi.macAddress());
     }
     else if (rec_ssid.startsWith("dgh:0")){
       dghonk_mode = false;
@@ -186,11 +174,10 @@ void dghonkStartup(){
     delay(100);
     
     Serial.println(); Serial.println();
-    set_new_ssid("ESP_STARTUP2");
+    // set_new_ssid("ESP_STARTUP2");
+    set_new_ssid("---");
 
-    MYID = WiFi.macAddress();
-
-    Serial.println("Startup with SSID:\t"+ssid_preface+"ESP_STARTUP2");
+    Serial.println("Startup with SSID:\t"+ssid_preface+"---");
 }
 
 void setup() {
@@ -217,7 +204,7 @@ void loop() {
     }else{
       if (dghonk_mode){
         if (dgh_go){
-          M5.Lcd.fillScreen(Green);
+          M5.Lcd.fillScreen(GREEN);
         }
         else{
           M5.Lcd.fillScreen(RED);
@@ -227,13 +214,17 @@ void loop() {
         M5.Lcd.fillScreen(WHITE);
       }
       
-      imuTest();
+      //imuTest();
       dispWifiCount();
     }    
     startTime = loopTime;
   }
+  M5.Lcd.setTextColor(BLACK);
+  M5.Lcd.setCursor(4, 5, 1);
+  M5.Lcd.printf("%d\n", dgh_last_command.length());
+  M5.Lcd.printf("%s", dgh_last_command);
 
-  if(wifiscantime < (loopTime - 10000)){
+  if(wifiscantime < (loopTime - 30000)){
     dispWifiCount(true);
     wifiscantime = loopTime;
   }
