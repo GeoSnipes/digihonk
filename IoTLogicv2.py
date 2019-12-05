@@ -42,9 +42,10 @@ def new_broadcast(mode, timenow=stoptime, misc='', flush=False):
     global counter
     global my_direction 
     counter += 1
-    
-    new_ssid = '.'.join([str(MYID), str(counter), str(int(timenow)),str(mode),str(my_direction),str(misc)])
-
+    if mode != '0':
+        new_ssid = '.'.join([str(MYID), str(counter), str(int(timenow)),str(mode),str(my_direction),str(misc)])
+    else:
+        new_ssid = '---'
     serconn.update_beacon_ssid(new_ssid)
     if flush:
         serconn.flush_serial_inout()
@@ -108,8 +109,8 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
         car stats by id
 
     E.G.
-                          num||id.counter.time stopped.mode.direction.misc---||channel||signal stregth||mac address
-    input: inter_SSIDS = ['1||DGHonk-1.1.1256489.1.2.---||11||-52||18:9C:27:34:42:60', '4||Hennhouse||11||-89||10:93:97:78:EA:40']
+                          num||id.counter.time stopped.mode.direction.misc||channel||signal stregth||mac address
+    input: inter_SSIDS = ['1||DGHonk-1.1.1256489.1.2.||11||-52||18:9C:27:34:42:60', '4||Hennhouse||11||-89||10:93:97:78:EA:40']
                             
     output: car_ids = {'1':[    '1',    '1256489',      '1',      '2'       '-52',         '18:9C:27:34:42:60']}
     """
@@ -127,7 +128,7 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
         if not split_spec[1].startswith('DGHonk-'):
             continue
         ssid = split_spec[1]
-        dghonk_stat = ssid.lstrip('DGHonk-').rstrip('---').split('.')
+        dghonk_stat = ssid.lstrip('DGHonk-').split('.')
         
         # Record ssid not formatted correctly
         if len(dghonk_stat) != 6:
@@ -160,9 +161,13 @@ def mode4_immoving():
     """Update ssids with status of moving porgress
     """
 
+    serconn.update_beacon_ssid('dgh:2')
     new_broadcast(mode='4')
     '''Read from arduino button press to signify passed intersection'''
-    sleep(5)
+    while True: 
+        stop_dgh = serconn.read_from_esp()
+        if start_dgh == 'dgh:0':
+            break
     new_broadcast(mode='6')
 
 
@@ -248,25 +253,32 @@ def mode7_findallmoving(inter_list):
 7-Findmoving
 '''
 honk_list = [\
-    '1||DGHonk-1.1.1575354939.1.3.---||11||-52||18:9C:27:34:42:60',\
-    '2||DGHonk-2.2.1575355939.3.6.---||11||-68||58:20:B1:88:78:A8',\
-    '3||DGHonk-3.1.1572355969.2.12.---||11||-84||D4:B9:2F:9B:D1:25',\
-    '4||DGHonk-4.3.1575355839.2.7.---||11||-93||4E:7A:8A:96:D7:D2',\
+    '1||DGHonk-1.1.1575354939.1.3.||11||-52||18:9C:27:34:42:60',\
+    '2||DGHonk-2.2.1575355939.3.6.||11||-68||58:20:B1:88:78:A8',\
+    '3||DGHonk-3.1.1572355969.2.12.||11||-84||D4:B9:2F:9B:D1:25',\
+    '4||DGHonk-4.3.1575355839.2.7.||11||-93||4E:7A:8A:96:D7:D2',\
     '4||Hennhouse||11||-89||10:93:97:78:EA:40',\
     '5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2']
-
+honk_list = []
 if __name__ == '__main__':
     # MYID = get_MYID().strip()
     with ESPSerial.ESPConnect(ESPSerial.commPort) as serconn:
-        new_broadcast(mode='1')
+        serconn.update_beacon_ssid('dgh:0')
         while True:
-            # honk_list = mode2_scanssid()
-            inter_list = create_inter_dict(honk_list)
-            if len(inter_list) > 0:
-                mov, col = mode7_findallmoving(inter_list)
-                if str(MYID) in  mov:
+            print(f'[INFO] DGH startup. MYID: {MYID}')
+            new_broadcast(mode='0', flush=True)
+            while True: 
+                start_dgh = serconn.read_from_esp()
+                if start_dgh == 'dgh:1':
                     break
-                else:
-                    mode5_monitornexttomove(mov)
-
-        mode4_immoving()
+            while True:
+                # honk_list = mode2_scanssid()
+                inter_list = create_inter_dict(honk_list)
+                if len(inter_list) > 0:
+                    mov, col = mode7_findallmoving(inter_list)
+                    if str(MYID) in  mov:
+                        break
+                    else:
+                        mode5_monitornexttomove(mov)
+            print(f'[INFO] {MYID}: Can go.')
+            mode4_immoving()

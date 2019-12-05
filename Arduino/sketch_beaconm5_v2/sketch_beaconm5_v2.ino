@@ -11,7 +11,10 @@ int wificount = 0;
 int broad_channel=11;
 String ssid_preface = "DGHonk-";
 String MYID;
+bool dghonk_mode = false;
+bool dgh_go = false;
 
+long sleep_count = 0;
 
 char buf[1000];
 
@@ -63,9 +66,9 @@ int scanWiFi(uint8_t scan_channel, bool returnlist=false) {
   bool async = false;
   bool show_hidden = false;
   bool passive = false;
-  uint32_t max_ms_per_chan = 500;
+  uint32_t max_ms_per_chan = 400;
 
-  int numberOfNetworks = WiFi.scanNetworksv2(async, show_hidden, passive, max_ms_per_chan, scan_channel);
+  int numberOfNetworks = WiFi.scanNetworks(async, show_hidden, passive, max_ms_per_chan, scan_channel);
  
   if (returnlist){
     Serial.print("Number of networks found: "); Serial.println(numberOfNetworks);
@@ -73,8 +76,8 @@ int scanWiFi(uint8_t scan_channel, bool returnlist=false) {
       //num||Network name||Network channel||Network strength||MAC address
        Serial.print(i+1);
        Serial.println("||"+WiFi.SSID(i)+"||"+WiFi.channel(i)+"||"+WiFi.RSSI(i)+"||"+WiFi.BSSIDstr(i));
-//      snprintf(buf,sizeof(buf), "%d||%s||%d||%d||%s", i+1, WiFi.SSID(i),WiFi.channel(i),WiFi.RSSI(i),WiFi.BSSIDstr(i));
-//      Serial.println(buf);
+      //snprintf(buf,sizeof(buf), "%d||%s||%d||%d||%s", i+1, WiFi.SSID(i),WiFi.channel(i),WiFi.RSSI(i),WiFi.BSSIDstr(i));
+      //Serial.println(buf);
     }
   }
 
@@ -88,7 +91,7 @@ void dispWifiCount(bool newscan = false){
     M5.Lcd.setCursor(0, 50, 1);
     M5.Lcd.println("WIFI Scanning");
     digitalWrite(M5_LED, LOW);
-    wificount = scanWiFi(11);
+    wificount = scanWiFi(0);
   }
 
   if (wificount == 0) {
@@ -126,6 +129,13 @@ void run_input(){
     }
     else if (rec_ssid.startsWith("2:")){
       Serial.println(MYID);
+    }
+    else if (rec_ssid.startsWith("dgh:0")){
+      dghonk_mode = false;
+      dgh_go = false;
+    }
+    else if (rec_ssid.startsWith("dgh:2")){
+      dgh_go = true;
     }
     else {      
       set_new_ssid(rec_ssid);
@@ -189,9 +199,7 @@ void setup() {
   dghonkStartup();
 }
 
-long sleep_count = 0;
 void loop() {
-  // put your main code here, to run repeatedly:
   loopTime = millis();
   if(startTime < (loopTime - 500)){
     if(M5.Axp.GetWarningLeve()){
@@ -207,7 +215,18 @@ void loop() {
         M5.Axp.SetSleep();
       }
     }else{
-      M5.Lcd.fillScreen(WHITE);
+      if (dghonk_mode){
+        if (dgh_go){
+          M5.Lcd.fillScreen(Green);
+        }
+        else{
+          M5.Lcd.fillScreen(RED);
+        }
+      }
+      else{
+        M5.Lcd.fillScreen(WHITE);
+      }
+      
       imuTest();
       dispWifiCount();
     }    
@@ -219,30 +238,23 @@ void loop() {
     wifiscantime = loopTime;
   }
 
-  /* TODO (below psuedo code)
-  id dghonk mode == false:
-    if(digitalRead(M5_BUTTON_HOME) == LOW
-      serial.println(dghonk start)
-      dghonk mode = true
-      set screen fill = red
+  if (dghonk_mode != true){
+    if(digitalRead(M5_BUTTON_HOME) == LOW){
+      Serial.println("dgh:1");
+      dghonk_mode = true;
+      M5.Lcd.fillScreen(RED);
       while(digitalRead(M5_BUTTON_HOME) == LOW);
-  else
-    run_input()
-    if go == true
-    set screen fill = green
-    if(digitalRead(M5_BUTTON_HOME) == LOW
-      serial.println('passed intersection')
-      dghonk mode = false
-      set screen fill = white
-      while(digitalRead(M5_BUTTON_HOME) == LOW);
-
-  if(digitalRead(M5_BUTTON_HOME) == LOW){
-    led_count++;
-    if(led_count > 12)
-      led_count = 7;
-    while(digitalRead(M5_BUTTON_HOME) == LOW);
-    M5.Axp.ScreenBreath(led_count);
+    }
   }
-  */
+  else {
+    if (dgh_go == true){
+      if(digitalRead(M5_BUTTON_HOME) == LOW){
+        Serial.println("dgh:0");
+        dghonk_mode = false;
+        dgh_go = false;
+        while(digitalRead(M5_BUTTON_HOME) == LOW);
+      }
+    }
+  }
   run_input();
 }
