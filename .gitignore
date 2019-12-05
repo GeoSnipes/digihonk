@@ -5,5 +5,5 @@ __pycache__/
 *.zip
 *.ini
 build/
-GPS Data_1.4.7.apk/
+GPS Data_1.4.7*/
 *.jpg

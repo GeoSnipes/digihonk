@@ -108,8 +108,9 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
         car stats by id
 
     E.G.
-    input: inter_SSIDS = ['1||DGHonk-1.1.1256489.1.2.---||11||-52||18:9C:27:34:42:60','4||Hennhouse||11||-89||10:93:97:78:EA:40']
-                            id:  counter    time stopped   mode   direction  signal stregth  mac address
+                          num||id.counter.time stopped.mode.direction.misc---||channel||signal stregth||mac address
+    input: inter_SSIDS = ['1||DGHonk-1.1.1256489.1.2.---||11||-52||18:9C:27:34:42:60', '4||Hennhouse||11||-89||10:93:97:78:EA:40']
+                            
     output: car_ids = {'1':[    '1',    '1256489',      '1',      '2'       '-52',         '18:9C:27:34:42:60']}
     """
 
@@ -237,7 +238,7 @@ def mode7_findallmoving(inter_list):
     shouldwait = all_cars.difference(set(moving))
     return moving, shouldwait
 
-'''CAR_ID.COUNTER.TIME_STOPPED.MODE.DIRECTION.MISC'''
+
 '''MODES
 1-STARTUP
 2-Scanning
@@ -246,9 +247,13 @@ def mode7_findallmoving(inter_list):
 6-PassedIntersection
 7-Findmoving
 '''
-honk_list = ['1||DGHonk-1.1.1575354939.1.3.---||11||-52||18:9C:27:34:42:60','2||DGHonk-2.2.1575355939.3.6.---||11||-68||58:20:B1:88:78:A8',\
-    '3||DGHonk-3.1.1572355969.2.12.---||11||-84||D4:B9:2F:9B:D1:25','4||DGHonk-4.3.1575355839.2.7.---||11||-93||4E:7A:8A:96:D7:D2',\
-    '4||Hennhouse||11||-89||10:93:97:78:EA:40','5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2']
+honk_list = [\
+    '1||DGHonk-1.1.1575354939.1.3.---||11||-52||18:9C:27:34:42:60',\
+    '2||DGHonk-2.2.1575355939.3.6.---||11||-68||58:20:B1:88:78:A8',\
+    '3||DGHonk-3.1.1572355969.2.12.---||11||-84||D4:B9:2F:9B:D1:25',\
+    '4||DGHonk-4.3.1575355839.2.7.---||11||-93||4E:7A:8A:96:D7:D2',\
+    '4||Hennhouse||11||-89||10:93:97:78:EA:40',\
+    '5||Heathers wi fi||11||-90||3C:7A:8A:96:D7:D2']
 
 if __name__ == '__main__':
     # MYID = get_MYID().strip()
