@@ -112,7 +112,6 @@ class ESPConnect:
                 if entire:
                     return self.espconn.read(self.espconn.inWaiting()).decode().strip()
                 return(self.espconn.readline().decode().strip())
-
         except UnicodeDecodeError:
             print('[INFO] ESP RESET. Cannot Read')
             return None

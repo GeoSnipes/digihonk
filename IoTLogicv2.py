@@ -44,6 +44,7 @@ def new_broadcast(mode, misc='', flush=False):
     global my_direction 
     global stoptime
     counter += 1
+    serconn.flush_serial_inout()
     if mode != '0':
         new_ssid = '.'.join([str(MYID), str(counter), str(int(stoptime)),str(mode),str(my_direction),str(misc)])
     else:
@@ -96,7 +97,7 @@ def get_MYID():
     serconn.update_beacon_ssid("2:")
     return serconn.read_from_esp()
 
-def create_inter_dict(inter_SSIDS, car_ids = {}):
+def create_inter_dict(inter_SSIDS):
     """Convert list of ssid signals to a dictionary with key id and value stats 
 
     Parameters
@@ -119,7 +120,7 @@ def create_inter_dict(inter_SSIDS, car_ids = {}):
     """
 
     errorhonk = []
-
+    car_ids={}
     if len(inter_SSIDS) == 0:
         return {}
 
@@ -185,24 +186,12 @@ def mode5_monitornexttomove(go_after):
         list of cars to monitor until they are out of intersection
     """
     
-    # new_broadcast(mode='5')
-    # for mon in go_after:
-    #     signal_strength = []
-    #     for _ in range(2):
-    #         while True:
-    #             honks = create_inter_dict(get_dghonks(), {})
-    #             if mon in honks:
-    #                 signal_strength.append(int(honks[mon][4]))
-    #                 if honks[mon][2] == '6':
-    #                     break
-    #             else:
-    #                 break
     new_broadcast(mode='5')
     for mon in go_after:
         signal_strength = []
         for _ in range(2):
             while True:
-                honks = create_inter_dict(get_dghonks(), {})
+                honks = create_inter_dict(get_dghonks())
                 if mon in honks:
                     signal_strength.append(int(honks[mon][4]))
                     if honks[mon][2] == '6':
@@ -245,8 +234,8 @@ def mode7_findallmoving(inter_list):
             continue
         intent = inter_list[car][3]
         turn_intents[intent] = (car, int(inter_list[car][1]))
-
-
+    print(turn_intents)
+    print(inter_list)
     sorted_intents = sorted(turn_intents.items(), key=lambda x: int(x[1][1]))
     
     # Add each car to allowed to move and create a set of directions that will collide
@@ -305,6 +294,8 @@ if __name__ == '__main__':
                 print(f'[INFO] Finding collisions.')
                 inter_list = create_inter_dict(honk_list)
                 if len(inter_list) > 0:
+                    mov=[]
+                    col=set()
                     print(f'[INFO] Found {len(inter_list)} DGH devices.')
                     mov, col = mode7_findallmoving(inter_list)
                     print(f'[INFO] Allowed to move: {mov}\nMust wait: {col}')
@@ -313,8 +304,8 @@ if __name__ == '__main__':
                     else:
                         print(f'[INFO] Collision found. Waiting on {mov}')
                         mode5_monitornexttomove(mov)
+                        continue
                 break
-            # sleep(1)
             print(f'[INFO] Permission to go received. {MYID} will go.')
             mode4_immoving()
             print(f'[INFO] Passed intersection notification received.')
