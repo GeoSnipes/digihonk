@@ -25,6 +25,21 @@ collision = {
     '11': ['1', '2', '3', '4', '7', '8'],
     '12': ['4', '8']
     }
+keeptime =[]
+def gettime(cnv_time=None):
+    global keeptime
+
+    precision = (10**3)
+    
+    if cnv_time != None:
+        return cnv_time/precision
+
+    timenow = time()
+    keeptime.append(timenow)
+    timenow = int(timenow*(precision))/(10.0**7)
+    timenow = str(timenow).split('.')[1]
+    timenow += '0'*(7-len(timenow))
+    return int(timenow)
 
 def new_broadcast(mode, misc='', flush=False):
     """Construct broadcast ssid the  arduino is to use
@@ -44,14 +59,14 @@ def new_broadcast(mode, misc='', flush=False):
     global MYID
     global counter
     global my_direction 
-    global stoptime
+    global timer_start
     global MYSSID
     counter += 1
 
     serconn.flush_serial_inout()
 
     if mode != '0':
-        new_ssid = '.'.join([str(MYID), str(counter), str(int(stoptime)),str(mode),str(my_direction),str(misc)])
+        new_ssid = '.'.join([str(MYID), str(counter), str(int(timer_start)),str(mode),str(my_direction),str(misc)])
         MYSSID = 'DGHonk-'+new_ssid
     else:
         new_ssid = '---'
@@ -232,7 +247,7 @@ def mode7_findallmoving(inter_list):
 
     global MYID
     global my_direction
-    global stoptime
+    global timer_start
 
     new_broadcast(mode='7')
 
@@ -242,7 +257,7 @@ def mode7_findallmoving(inter_list):
     shouldwait = []
 
     # Add myself to turn intention list
-    # turn_intents= {str(my_direction): (str(MYID), stoptime)}
+    # turn_intents= {str(my_direction): (str(MYID), timer_start)}
     turn_intents = {}
     # Add remaining cars to turn intention
     for car in inter_list:
@@ -250,7 +265,7 @@ def mode7_findallmoving(inter_list):
             continue
         intent = inter_list[car][3]
         turn_intents[intent] = (car, int(inter_list[car][1]))
-    print(turn_intents)
+    # print(turn_intents)
     sorted_intents = sorted(turn_intents.items(), key=lambda x: int(x[1][1]))
     
     # Add each car to allowed to move and create a set of directions that will collide
@@ -298,19 +313,18 @@ if __name__ == '__main__':
         print(f'[INFO] DGH startup. MYID: {MYID}')
         for my_direction in dir_list[results.port.upper()]:
             # print(f'[INFO] DGH startup. MYID: {MYID}\t\tDirection:{my_direction}')
-            # sleep(1)
             new_broadcast(mode='0')
             # print(f'[INFO] Waiting on notification at intersection.')
             
             # i am no longer waiting for user input, just send start DGH command
             serconn.update_beacon_ssid('dgh:1')
-            timer_start = time()
+            timer_start = gettime()
             # while True: 
             #     start_dgh = serconn.read_from_esp()
             #     if start_dgh == 'dgh:1':
             #         break
+            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '', flush=True)
             while True:
-                print(f'Direction: {my_direction}\tTime: {timer_start}', end = '')
                 # print(f'[INFO] Scanning for DGHonks.')
                 honk_list = mode2_scanssid()
                 # print(f'[INFO] Finding collisions.')
@@ -331,12 +345,15 @@ if __name__ == '__main__':
             # print(f'[INFO] Permission to go received. {MYID} will go.')
             mode4_immoving()
             # print(f'[INFO] Passed intersection notification received.')
-            timer_stop=time()
-            print(f'\tMove Time: {timer_stop}\tTime taken: {timer_stop-timer_start}')
+            timer_stop = gettime()
+            time_taken = gettime(timer_stop)-gettime(timer_start)
+            print(f'\tMove Time: {timer_stop}\tTime taken: {time_taken}')
             # print(f'Time taken: {timer_stop-timer_start} seconds.')
-            dgh_timers.append(timer_stop-timer_start)
+            dgh_timers.append(time_taken)
             # sleep(4)
             new_broadcast(mode='0')
 
         print(f'\n\nAverage time taken: {round(mean(dgh_timers),4)} seconds')
-        
+
+# for _ in keeptime:
+#     print(_)
