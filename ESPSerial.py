@@ -105,7 +105,7 @@ class ESPConnect:
         rtype: str
         """
         if entire:
-            delay = 4
+            delay = 1
         sleep(delay)
         try:
             if self.espconn.inWaiting()>0:

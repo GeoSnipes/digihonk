@@ -75,7 +75,7 @@ void dispWifiCount(bool newscan = false){
   // WiFi.scanNetworks will return the number of networks found
   if (newscan){
     M5.Lcd.setTextColor(GREEN, WHITE);
-    M5.Lcd.setCursor(0, 50, 1);
+    M5.Lcd.setCursor(4, 50, 1);
     M5.Lcd.println("WIFI Scanning");
     digitalWrite(M5_LED, LOW);
     wificount = scanWiFi(11);
@@ -84,13 +84,15 @@ void dispWifiCount(bool newscan = false){
 
   if (wificount == 0) {
     M5.Lcd.setTextColor(RED, WHITE);
-    M5.Lcd.setCursor(0, 70, 2);
+    M5.Lcd.setCursor(4, 30, 2);
     M5.Lcd.printf("%d AP", wificount);
   } else {   
     M5.Lcd.setTextColor(BLACK);
-    M5.Lcd.setCursor(0, 60, 1);
+    M5.Lcd.setCursor(4, 40, 1);
     for (int i = 0; i < wificount; i++) {
-      M5.Lcd.printf("%s||%d||%d\n", WiFi.SSID(i), WiFi.channel(i), WiFi.RSSI(i));
+      M5.Lcd.print(WiFi.SSID(i)); M5.Lcd.print("||");
+      M5.Lcd.print(WiFi.channel(i)); M5.Lcd.print("||");
+      M5.Lcd.print(WiFi.RSSI(i)); M5.Lcd.println();
     }
   }
 }
@@ -122,8 +124,16 @@ void run_input(){
       dghonk_mode = false;
       dgh_go = false;
     }
+    else if (rec_ssid.startsWith("dgh:1")){
+      dghonk_mode = true;
+      M5.Lcd.fillScreen(RED);
+    }
     else if (rec_ssid.startsWith("dgh:2")){
       dgh_go = true;
+      // for measuring time
+      Serial.println("dgh:0");
+      dghonk_mode = false;
+      dgh_go = false;
     }
     else {      
       set_new_ssid(rec_ssid);
@@ -134,6 +144,7 @@ void run_input(){
 void m5Startup(){
   // put your setup code here, to run once:
   M5.begin();
+  
   Wire.begin(32,33);
   
   //!Logo
@@ -184,6 +195,7 @@ void setup() {
   WiFi.mode(WIFI_AP_STA);
   m5Startup();
   dghonkStartup();
+  M5.Lcd.setRotation(1);
 }
 
 void loop() {
@@ -193,7 +205,7 @@ void loop() {
       sleep_count++;
       if(sleep_count >= 1){
         M5.Lcd.fillScreen(WHITE);
-        M5.Lcd.setCursor(0, 20, 1);
+        M5.Lcd.setCursor(4, 20, 1);
         M5.Lcd.setTextColor(RED, WHITE);
         M5.Lcd.printf("Warning: low battery");
       }
@@ -221,8 +233,8 @@ void loop() {
   }
   M5.Lcd.setTextColor(BLACK);
   M5.Lcd.setCursor(4, 5, 1);
-  M5.Lcd.printf("%d\n", dgh_last_command.length());
-  M5.Lcd.printf("%s", dgh_last_command);
+  M5.Lcd.println(dgh_last_command.length());
+  M5.Lcd.println(dgh_last_command);
 
   if(wifiscantime < (loopTime - 30000)){
     dispWifiCount(true);
