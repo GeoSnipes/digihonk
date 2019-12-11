@@ -231,7 +231,7 @@ def mode5_monitornexttomove(go_after):
         quit()
 
 
-def mode7_findallmoving(inter_list):
+def mode7_findallmoving(inter_list, model1=False):
     """Construct iterator of cars that can move and those that cannot
 
     Parameters
@@ -271,9 +271,12 @@ def mode7_findallmoving(inter_list):
     # Add each car to allowed to move and create a set of directions that will collide
     for intent, id_time in sorted_intents:
         all_cars.add(id_time[0])
+    for intent, id_time in sorted_intents:
         if (intent not in will_collide):
             moving.append(id_time[0])
             will_collide.update(collision[intent])
+        if model1:
+            break
     
     # Collect all car is not able to turn
     shouldwait = all_cars.difference(set(moving))
@@ -307,34 +310,27 @@ if __name__ == '__main__':
     ESPSerial.commPort  = results.port
     my_direction = int(results.dir)
 
-    dir_list={'COM23':[8,1,2,4],'COM4':[1,2],'COM6':[3,4]}
+    # transport 1
+    # dir_list={'COM23':[2,1,3,10],'COM4':[5,9,12,2],'COM6':[11,8,4,6]}
+    # transport 2
+    # dir_list={'COM23':[3,6,2,9],'COM4':[2,12,8,1],'COM6':[7,4,11,8]}
+    # transport 3
+    dir_list={'COM23':[2,5,8,11],'COM4':[11, 8, 2, 5],'COM6':[5,2,11,8]}
     with ESPSerial.ESPConnect(results.port) as serconn:
         serconn.update_beacon_ssid('dgh:0')
         print(f'[INFO] DGH startup. MYID: {MYID}')
         for my_direction in dir_list[results.port.upper()]:
-            # print(f'[INFO] DGH startup. MYID: {MYID}\t\tDirection:{my_direction}')
             new_broadcast(mode='0')
-            # print(f'[INFO] Waiting on notification at intersection.')
             
-            # i am no longer waiting for user input, just send start DGH command
             serconn.update_beacon_ssid('dgh:1')
             timer_start = gettime()
-            # while True: 
-            #     start_dgh = serconn.read_from_esp()
-            #     if start_dgh == 'dgh:1':
-            #         break
-            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '', flush=True)
+            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '\n', flush=True)
             while True:
-                # print(f'[INFO] Scanning for DGHonks.')
                 honk_list = mode2_scanssid()
-                # print(f'[INFO] Finding collisions.')
                 inter_list = create_inter_dict(honk_list, show_sig=False)
                 if len(inter_list) > 1:
-                    mov=[]
-                    col=set()
-                    # print(f'[INFO] Found {len(inter_list)} DGH devices.')
-                    mov, col = mode7_findallmoving(inter_list)
-                    # print(f'[INFO] Allowed to move: {mov}\n[INFO] Must wait: {col}')
+                    mov, col = mode7_findallmoving(inter_list, model1=True)
+                    print(f'[INFO] Allowed to move: {mov}\t\tMust wait: {col}')
                     if str(MYID) in  mov:
                         break
                     else:
@@ -342,16 +338,14 @@ if __name__ == '__main__':
                         mode5_monitornexttomove(mov)
                         continue
                 break
-            # print(f'[INFO] Permission to go received. {MYID} will go.')
             mode4_immoving()
-            # print(f'[INFO] Passed intersection notification received.')
             timer_stop = gettime()
             time_taken = gettime(timer_stop)-gettime(timer_start)
-            print(f'\tMove Time: {timer_stop}\tTime taken: {time_taken}')
-            # print(f'Time taken: {timer_stop-timer_start} seconds.')
+            # print(f'\tMove Time: {timer_stop}', end='')
+            # print(f'\tTime taken: {round(time_taken,3)}')
             dgh_timers.append(time_taken)
-            # sleep(4)
             new_broadcast(mode='0')
+            sleep(2)
 
         print(f'\n\nAverage time taken: {round(mean(dgh_timers),4)} seconds')
 
