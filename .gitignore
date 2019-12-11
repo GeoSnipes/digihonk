@@ -7,3 +7,4 @@ __pycache__/
 build/
 GPS Data_1.4.7*/
 *.jpg
+*.txt
