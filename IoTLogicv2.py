@@ -11,6 +11,8 @@ timer_start = 9999999999
 counter = 0
 my_direction = 8
 
+open(f'{MYID}.txt','w').close()
+
 collision = {
     '1': ['4', '5', '7', '8', '9', '10', '11'],
     '2': ['4', '5', '6', '7', '10', '11'],
@@ -26,6 +28,17 @@ collision = {
     '12': ['4', '8']
     }
 keeptime =[]
+
+def func_timer(func):
+    def timer(*args, **kwargs):
+        startT = time()
+        return_cont = func(*args, **kwargs)
+        stopT = time()
+        with open(f'{MYID}.txt', 'a') as f:
+            f.write(f'{func.__name__}: {stopT-startT}seconds\n')
+        return return_cont
+    return timer
+
 def gettime(cnv_time=None):
     global keeptime
 
@@ -41,6 +54,7 @@ def gettime(cnv_time=None):
     timenow += '0'*(7-len(timenow))
     return int(timenow)
 
+@func_timer
 def new_broadcast(mode, misc='', flush=False):
     """Construct broadcast ssid the  arduino is to use
 
@@ -78,7 +92,7 @@ def new_broadcast(mode, misc='', flush=False):
         print(new_ssid, end='\t\t\t')
         print(serconn.read_from_esp(.4))
 
-
+@func_timer
 def get_dghonks(wait=.4, entire=True):
     """Retrieve list of all wifi signals
 
@@ -108,6 +122,7 @@ def get_dghonks(wait=.4, entire=True):
 
     return honk_list
 
+@func_timer
 def get_MYID():
     """Retrieve MAC address of arduino
 
@@ -119,6 +134,7 @@ def get_MYID():
     serconn.update_beacon_ssid("2:")
     return serconn.read_from_esp()
 
+@func_timer
 def create_inter_dict(inter_SSIDS, show_sig=False):
     """Convert list of ssid signals to a dictionary with key id and value stats 
 
@@ -178,6 +194,7 @@ def create_inter_dict(inter_SSIDS, show_sig=False):
             print(f'{cid}: {stat}')
     return car_ids
 
+@func_timer
 def mode2_scanssid():
     """Find all ssids' in the area
 
@@ -189,6 +206,7 @@ def mode2_scanssid():
     new_broadcast(mode='2')
     return get_dghonks()
 
+@func_timer
 def mode4_immoving():
     """Update ssids with status of moving porgress
     """
@@ -203,7 +221,7 @@ def mode4_immoving():
     new_broadcast(mode='6')
 
 
-
+@func_timer
 def mode5_monitornexttomove(go_after):
     """Construct broadcast ssid the  arduino is to use
 
@@ -230,7 +248,7 @@ def mode5_monitornexttomove(go_after):
         serconn.__exit__
         quit()
 
-
+@func_timer
 def mode7_findallmoving(inter_list, model1=False):
     """Construct iterator of cars that can move and those that cannot
 
@@ -310,12 +328,16 @@ if __name__ == '__main__':
     ESPSerial.commPort  = results.port
     my_direction = int(results.dir)
 
-    # transport 1
+    # scenario 1
     # dir_list={'COM23':[2,1,3,10],'COM4':[5,9,12,2],'COM6':[11,8,4,6]}
-    # transport 2
+    # scenario 2
     # dir_list={'COM23':[3,6,2,9],'COM4':[2,12,8,1],'COM6':[7,4,11,8]}
-    # transport 3
-    dir_list={'COM23':[2,5,8,11],'COM4':[11, 8, 2, 5],'COM6':[5,2,11,8]}
+    # scenario 3
+    # dir_list={'COM23':[2,5,8,11],'COM4':[11, 8, 2, 5],'COM6':[5,2,11,8]}
+    # scenario 4
+    # dir_list={'COM23':[2,10,6,7],'COM4':[7, 6, 2, 10],'COM6':[10,2,7,6]}
+    # scenario 5
+    dir_list={'COM23':[2,2,2,2],'COM4':[11, 11, 11, 11],'COM6':[7,7,7,7]}
     with ESPSerial.ESPConnect(results.port) as serconn:
         serconn.update_beacon_ssid('dgh:0')
         print(f'[INFO] DGH startup. MYID: {MYID}')
@@ -324,13 +346,15 @@ if __name__ == '__main__':
             
             serconn.update_beacon_ssid('dgh:1')
             timer_start = gettime()
-            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '\n', flush=True)
+            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '', flush=True)
+            with open(f'{MYID}.txt', 'a') as f:
+                f.write(f'Direction: {my_direction}\tTime: {timer_start}\tReal time:{gettime(timer_start)}\n')
             while True:
                 honk_list = mode2_scanssid()
                 inter_list = create_inter_dict(honk_list, show_sig=False)
                 if len(inter_list) > 1:
-                    mov, col = mode7_findallmoving(inter_list, model1=True)
-                    print(f'[INFO] Allowed to move: {mov}\t\tMust wait: {col}')
+                    mov, col = mode7_findallmoving(inter_list, model1=False)
+                    # print(f'[INFO] Allowed to move: {mov}\t\tMust wait: {col}')
                     if str(MYID) in  mov:
                         break
                     else:
@@ -341,8 +365,8 @@ if __name__ == '__main__':
             mode4_immoving()
             timer_stop = gettime()
             time_taken = gettime(timer_stop)-gettime(timer_start)
-            # print(f'\tMove Time: {timer_stop}', end='')
-            # print(f'\tTime taken: {round(time_taken,3)}')
+            print(f'\tMove Time: {timer_stop}', end='')
+            print(f'\tTime taken: {round(time_taken,3)}')
             dgh_timers.append(time_taken)
             new_broadcast(mode='0')
             sleep(2)
