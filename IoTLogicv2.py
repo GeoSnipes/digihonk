@@ -35,7 +35,7 @@ def func_timer(func):
         return_cont = func(*args, **kwargs)
         stopT = time()
         with open(f'{MYID}.txt', 'a') as f:
-            f.write(f'{func.__name__}: {stopT-startT}seconds\n')
+            f.write(f'{func.__name__}: {stopT-startT} secs\n')
         return return_cont
     return timer
 
@@ -323,13 +323,15 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-p', dest='port', action='store', help='Supply port (WIN only)', default= 'COM23')
     parser.add_argument('-d', dest='dir', action='store', help='Supply direction intent', default=8)
+    parser.add_argument('-i', dest='id', action='store', help='Set id to use', default=MYID)
     results = parser.parse_args()
 
     ESPSerial.commPort  = results.port
     my_direction = int(results.dir)
+    MYID = results.id
 
     # scenario 1
-    # dir_list={'COM23':[2,1,3,10],'COM4':[5,9,12,2],'COM6':[11,8,4,6]}
+    dir_list={'COM23':[2,1,3,10],'COM4':[5,9,12,2],'COM6':[11,8,4,6]}
     # scenario 2
     # dir_list={'COM23':[3,6,2,9],'COM4':[2,12,8,1],'COM6':[7,4,11,8]}
     # scenario 3
@@ -337,16 +339,16 @@ if __name__ == '__main__':
     # scenario 4
     # dir_list={'COM23':[2,10,6,7],'COM4':[7, 6, 2, 10],'COM6':[10,2,7,6]}
     # scenario 5
-    dir_list={'COM23':[2,2,2,2],'COM4':[11, 11, 11, 11],'COM6':[7,7,7,7]}
+    # dir_list={'COM23':[2,11,7,2],'COM4':[11, 7, 2, 11],'COM6':[7,2,11,7]}
     with ESPSerial.ESPConnect(results.port) as serconn:
         serconn.update_beacon_ssid('dgh:0')
-        print(f'[INFO] DGH startup. MYID: {MYID}')
+        print(f'[INFO] DGH startup. MYID: {MYID}\t\tScenario: {dir_list[results.port.upper()]}')
         for my_direction in dir_list[results.port.upper()]:
             new_broadcast(mode='0')
             
             serconn.update_beacon_ssid('dgh:1')
             timer_start = gettime()
-            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '', flush=True)
+            print(f'Direction: {my_direction}\tTime: {timer_start}', end = '\n', flush=True)
             with open(f'{MYID}.txt', 'a') as f:
                 f.write(f'Direction: {my_direction}\tTime: {timer_start}\tReal time:{gettime(timer_start)}\n')
             while True:
@@ -354,7 +356,7 @@ if __name__ == '__main__':
                 inter_list = create_inter_dict(honk_list, show_sig=False)
                 if len(inter_list) > 1:
                     mov, col = mode7_findallmoving(inter_list, model1=False)
-                    # print(f'[INFO] Allowed to move: {mov}\t\tMust wait: {col}')
+                    print(f'[INFO] Allowed to move: {mov}\t\tMust wait: {col}')
                     if str(MYID) in  mov:
                         break
                     else:
@@ -365,8 +367,8 @@ if __name__ == '__main__':
             mode4_immoving()
             timer_stop = gettime()
             time_taken = gettime(timer_stop)-gettime(timer_start)
-            print(f'\tMove Time: {timer_stop}', end='')
-            print(f'\tTime taken: {round(time_taken,3)}')
+            # print(f'\tMove Time: {timer_stop}', end='')
+            # print(f'\tTime taken: {round(time_taken,3)}')
             dgh_timers.append(time_taken)
             new_broadcast(mode='0')
             sleep(2)
